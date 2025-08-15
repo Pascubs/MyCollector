@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Collector - Card Collection Tracker</title>
+  <script>
+    // --- Initial Theme Setter (FOUC Prevention) ---
+    // This script must run *before* the body is rendered to prevent a Flash of Unstyled Content.
+    // It has no dependencies and sets the 'dark' class based on localStorage or system preference.
+    (function() {
+      const THEME_STORAGE_KEY = 'myCollectorTheme';
+      let preferredTheme;
+      try {
+        // Attempt to get the user's saved preference from localStorage.
+        preferredTheme = localStorage.getItem(THEME_STORAGE_KEY);
+      } catch (e) {
+        // Handle cases where localStorage is unavailable (e.g., private browsing).
+        console.warn('Could not access localStorage for theme preference.');
+      }
+
+      // Determine if dark mode should be enabled based on saved preference or system settings.
+      const isDarkMode = preferredTheme === 'dark' || 
+        (!preferredTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      
+      // Apply the 'dark' class to the root <html> element if needed.
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // --- Tailwind Configuration & Global Theme Toggling Logic ---
+    // This script runs *after* Tailwind CSS has been loaded.
+
+    // 1. Configure Tailwind CSS to use the 'class' strategy for dark mode.
+    if (window.tailwind) {
+      tailwind.config = {
+        darkMode: 'class',
+      };
+    }
+
+    // 2. Define global theme management functions and attach them to the window object.
+    (function() {
+      const THEME_STORAGE_KEY = 'myCollectorTheme';
+
+      // Function to apply the theme change to the DOM and persist it.
+      function applyThemeChange(newTheme) {
+        const isDark = newTheme === 'dark';
+        // Add or remove the 'dark' class from the root <html> element.
+        document.documentElement.classList.toggle('dark', isDark);
+        
+        try {
+          // Persist the user's choice in localStorage.
+          localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+        } catch (e) {
+          console.warn('Could not save theme to localStorage.');
+        }
+        
+        // Dispatch a custom event so the React application can update its own state (e.g., the theme icon).
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: newTheme } }));
+      }
+
+      // Function to toggle between 'light' and 'dark' themes.
+      function toggleCurrentTheme() {
+        const currentIsDark = document.documentElement.classList.contains('dark');
+        const newTheme = currentIsDark ? 'light' : 'dark';
+        applyThemeChange(newTheme);
+      }
+      
+      // Expose the toggle function globally so the React application can call it.
+      window.toggleMyCollectorTheme = toggleCurrentTheme;
+    })();
+  </script>
+  <style>
+    /* Custom theme styles */
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Lato:wght@400;700&display=swap');
+    
+    html {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    body {
+      font-family: 'Lato', sans-serif; /* Primary font */
+    }
+    .font-cuphead-title {
+      font-family: 'Oswald', sans-serif; /* Title font */
+      letter-spacing: 0.03em;
+    }
+    .font-cuphead-text {
+      font-family: 'Lato', sans-serif; /* Body/text font */
+    }
+
+    /* Custom scrollbar for elements like card descriptions */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    
+    /* Dark mode scrollbar styles */
+    .dark .custom-scrollbar::-webkit-scrollbar-track {
+      background: #2d3748; /* slate-800 */
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #718096; /* slate-500 */
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0; /* slate-400 */
+    }
+
+    /* Interactive Tutorial Styles */
+    .tutorial-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: transparent; /* Allows clicks to pass through to the hole */
+      z-index: 999;
+    }
+    .tutorial-highlight-hole {
+      position: fixed;
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.7); /* slate-900 with opacity */
+      z-index: 1000;
+      transition: all 0.3s ease-in-out;
+      pointer-events: none; /* Let clicks pass through */
+    }
+    .tutorial-popup {
+      position: fixed;
+      background-color: white;
+      padding: 1.25rem; /* p-5 */
+      border-radius: 0.75rem; /* rounded-xl */
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      z-index: 1001;
+      max-width: 320px;
+      transition: top 0.3s ease-in-out, left 0.3s ease-in-out, opacity 0.3s;
+    }
+    
+    /* Dark mode tutorial popup styles */
+    .dark .tutorial-popup {
+       background-color: #1e293b; /* slate-800 */
+       border: 1px solid #334155; /* slate-700 */
+    }
+    .dark .tutorial-popup h3 {
+        color: #93c5fd; /* blue-300 */
+    }
+     .dark .tutorial-popup p {
+        color: #cbd5e1; /* slate-300 */
+    }
+    .dark .tutorial-popup button.bg-slate-200 {
+        background-color: #475569; /* slate-600 */
+        color: #e2e8f0; /* slate-200 */
+    }
+     .dark .tutorial-popup button.bg-slate-200:hover {
+        background-color: #64748b; /* slate-500 */
+    }
+     .dark .tutorial-popup button.text-slate-500 {
+        color: #94a3b8; /* slate-400 */
+     }
+
+    /* Fireworks animation */
+    @keyframes firework-explode {
+      from {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+      }
+      to {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+      }
+    }
+    .firework-particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      pointer-events: none;
+      --tx: calc(cos(var(--i) * (360deg / 50)) * 90px); /* 50 should match particle count */
+      --ty: calc(sin(var(--i) * (360deg / 50)) * 90px);
+      animation: firework-explode 0.8s ease-out forwards;
+    }
+    
+    /* Animation for guest warning icons */
+    @keyframes icon-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-icon-bob {
+      animation: icon-bob 2.5s ease-in-out infinite;
+    }
+
+     /* Toast animations */
+    .toast-enter {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    .toast-enter-active {
+      opacity: 1;
+      transform: translateX(0);
+      transition: all 300ms ease-out;
+    }
+    .toast-exit {
+      opacity: 1;
+    }
+    .toast-exit-active {
+      opacity: 0;
+      transform: scale(0.9);
+      transition: all 300ms ease-in;
+    }
+    
+    /* Collection Showcase Edit Mode Animation */
+    @keyframes jiggle {
+      0% { transform: rotate(-0.8deg); }
+      50% { transform: rotate(0.8deg); }
+      100% { transform: rotate(-0.8deg); }
+    }
+    .is-jiggling {
+      animation: jiggle 0.25s infinite linear;
+    }
+    .is-jiggling:nth-child(2n) {
+      animation-delay: -0.12s;
+    }
+  </style>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "hono/": "https://esm.sh/hono@^4.8.10/",
+    "hono": "https://esm.sh/hono@^4.8.10"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 antialiased">
+  <div id="root"></div>
+  <script type="module" src="/index.js"></script>
+</body>
+</html>
